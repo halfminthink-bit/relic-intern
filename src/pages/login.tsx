@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation } from "react-router-dom";
 import { Loader2, Mail, MailCheck, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
@@ -12,13 +12,17 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 
 export default function LoginPage() {
-  const { member, signInWithMagicLink, signInAsDemo } = useAuth();
-  const navigate = useNavigate();
-  const from = (useLocation().state as { from?: string } | null)?.from ?? "/app/themes";
+  const { session, member, loading, signInWithMagicLink, signInAsDemo, signInAsNewUser } = useAuth();
+  const from = (useLocation().state as { from?: string } | null)?.from;
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent">("idle");
 
-  if (member) return <Navigate to={from} replace />;
+  // ログイン後: 研究室に所属していれば元の画面へ、未所属なら作成／参加の画面へ（参加リンクから来た場合はそのまま参加画面へ）
+  if (!loading && session) {
+    const fromJoin = from?.startsWith("/join");
+    if (member) return <Navigate to={from && from.startsWith("/app") ? from : "/app/themes"} replace />;
+    return <Navigate to={fromJoin ? from! : "/welcome"} replace />;
+  }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -27,10 +31,18 @@ export default function LoginPage() {
     setStatus("sent");
   }
 
-  async function demo() {
-    await signInAsDemo();
-    navigate(from, { replace: true });
-  }
+  const demoButtons = (
+    <div className="grid w-full gap-2">
+      <Button variant="outline" className="h-auto w-full flex-col gap-0.5 py-2" onClick={() => void signInAsDemo()}>
+        既存メンバーとして試す
+        <span className="text-[11px] font-normal text-muted-foreground">ナノカーボン材料研究室・M2・代表者</span>
+      </Button>
+      <Button variant="outline" className="h-auto w-full flex-col gap-0.5 py-2" onClick={() => void signInAsNewUser()}>
+        新規ユーザーとして試す
+        <span className="text-[11px] font-normal text-muted-foreground">研究室の作成・参加コードでの参加から</span>
+      </Button>
+    </div>
+  );
 
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center bg-ruled px-4 py-10">
@@ -49,9 +61,7 @@ export default function LoginPage() {
             </Button>
             <Separator className="my-2" />
             <p className="text-xs text-muted-foreground">これはUIのみのデモです。下のボタンでログイン後の画面を確認できます。</p>
-            <Button className="w-full" onClick={demo}>
-              デモメンバーとしてログイン
-            </Button>
+            {demoButtons}
           </CardContent>
         ) : (
           <>
@@ -83,9 +93,7 @@ export default function LoginPage() {
                 デモ
                 <Separator className="flex-1" />
               </div>
-              <Button variant="outline" className="w-full" onClick={demo}>
-                デモメンバー（M2）としてログイン
-              </Button>
+              {demoButtons}
               <button
                 type="button"
                 onClick={async () => {

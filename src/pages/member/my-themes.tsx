@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ChevronRight, FolderGit2, PenLine, Sprout } from "lucide-react";
+import { ChevronRight, FlaskConical, FolderGit2, PenLine, Plus, Sprout } from "lucide-react";
 import { listActivity, listMyThemes } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useAsync } from "@/hooks/use-async";
@@ -19,7 +19,11 @@ export default function MyThemesPage() {
     <div className="container max-w-4xl space-y-6 py-5 sm:py-8">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <p className="text-xs text-muted-foreground">{member!.lab.university}・{member!.lab.name}</p>
+          <Link to="/app/lab" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary hover:underline">
+            <FlaskConical className="h-3.5 w-3.5" />
+            {member!.lab.university}・{member!.lab.name}
+            {member!.role === "admin" && "（代表者・参加コード）"}
+          </Link>
           <h1 className="text-xl font-bold">マイテーマ</h1>
         </div>
         <Button asChild size="sm" className="hidden md:inline-flex">
@@ -43,14 +47,29 @@ export default function MyThemesPage() {
       </Card>
 
       <section>
-        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
-          <FolderGit2 className="h-4 w-4 text-muted-foreground" />
-          担当しているテーマ
-        </h2>
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h2 className="flex items-center gap-2 text-sm font-semibold">
+            <FolderGit2 className="h-4 w-4 text-muted-foreground" />
+            担当しているテーマ
+          </h2>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/app/themes/new">
+              <Plus />
+              テーマを作る
+            </Link>
+          </Button>
+        </div>
         {themes.loading ? (
           <LoadingState />
         ) : themes.data!.length === 0 ? (
-          <EmptyState title="担当しているテーマはまだありません" />
+          <EmptyState title="担当しているテーマはまだありません">
+            <Button asChild className="mt-4">
+              <Link to="/app/themes/new">
+                <Plus />
+                最初のテーマを作る
+              </Link>
+            </Button>
+          </EmptyState>
         ) : (
           <ul className="space-y-3">
             {themes.data!.map((t) => (

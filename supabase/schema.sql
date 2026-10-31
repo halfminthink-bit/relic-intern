@@ -7,7 +7,7 @@ create table labs (
   name text not null,
   university text not null,
   description text not null default '',
-  is_public boolean not null default false,
+  is_public boolean not null default true,     -- 研究室の存在は常に公開（将来の非公開化用に列だけ残す）
   tags text[] not null default '{}'
 );
 
@@ -15,7 +15,13 @@ create table members (
   id uuid primary key references auth.users (id) on delete cascade,
   lab_id uuid not null references labs (id) on delete cascade,
   grade text not null,               -- 'B4' | 'M1' | 'M2' | 'D1' ... | '教員'
-  role text not null default 'member' check (role in ('admin', 'member'))
+  role text not null default 'member' check (role in ('admin', 'member'))  -- admin = 代表者
+);
+
+-- 参加コード（外部に見せないため labs とは別テーブル。代表者だけが読める）
+create table lab_join_codes (
+  lab_id uuid primary key references labs (id) on delete cascade,
+  code text unique not null
 );
 
 create table themes (
@@ -25,14 +31,14 @@ create table themes (
   title text not null,
   summary text not null default '',
   tags text[] not null default '{}',
-  visibility text not null default 'private' check (visibility in ('private', 'summary', 'public'))
+  visibility text not null default 'public' check (visibility in ('private', 'summary', 'public'))  -- 現在は常に public
 );
 
 create table entries (
   id uuid primary key default gen_random_uuid(),
   theme_id uuid not null references themes (id) on delete cascade,
   author_id uuid not null references members (id),
-  type text not null check (type in ('progress', 'trouble', 'achievement', 'memo')),
+  type text not null default 'memo' check (type in ('memo', 'trouble')),   -- trouble = 相談に出した記録
   body text not null,
   attachments jsonb not null default '[]',   -- Attachment[]
   is_public boolean not null default false,
@@ -63,6 +69,7 @@ alter table members enable row level security;
 alter table themes enable row level security;
 alter table entries enable row level security;
 alter table consult_requests enable row level security;
+alter table lab_join_codes enable row level security;
 
 create or replace function my_lab_id() returns uuid language sql stable security definer as $$
   select lab_id from members where id = auth.uid()
@@ -85,7 +92,7 @@ create policy "公開記録 or 自分の研究室" on entries for select
     exists (
       select 1 from themes t join labs l on l.id = t.lab_id
       where t.id = theme_id
-        and (t.lab_id = my_lab_id() or (l.is_public and t.visibility = 'public' and is_public))
+        and (t.lab_id = my_lab_id() or (l.is_public and t.visibility <> 'private' and is_public))
     )
   );
 
@@ -95,11 +102,55 @@ create policy "研究室メンバーは記録を追加" on entries for insert
 create policy "研究室メンバーは記録を更新" on entries for update
   using (exists (select 1 from themes t where t.id = theme_id and t.lab_id = my_lab_id()));
 
-create policy "テーマ担当者は公開範囲を更新" on themes for update
+create policy "メンバーは自分のテーマを作成" on themes for insert
+  with check (owner_id = auth.uid() and lab_id = my_lab_id());
+
+create policy "テーマ担当者はテーマを更新" on themes for update
   using (owner_id = auth.uid());
 
-create policy "管理者は研究室を更新" on labs for update
+create policy "代表者は研究室を更新" on labs for update
   using (id = my_lab_id() and exists (select 1 from members m where m.id = auth.uid() and m.role = 'admin'));
+
+create policy "代表者だけが参加コードを読める" on lab_join_codes for select
+  using (lab_id = my_lab_id() and exists (select 1 from members m where m.id = auth.uid() and m.role = 'admin'));
+
+-- ---------------------------------------------------------------
+-- 研究室の作成・参加は RPC（security definer）で行う
+-- ---------------------------------------------------------------
+create or replace function create_lab(p_name text, p_university text, p_description text, p_tags text[], p_grade text)
+returns table (lab_id uuid, code text) language plpgsql security definer as $$
+declare
+  v_lab uuid;
+  v_code text := upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 8));
+begin
+  if exists (select 1 from members where id = auth.uid()) then
+    raise exception 'すでに研究室に所属しています';
+  end if;
+  insert into labs (slug, name, university, description, tags)
+    values ('lab-' || substr(gen_random_uuid()::text, 1, 6), p_name, p_university, p_description, p_tags)
+    returning id into v_lab;
+  insert into members (id, lab_id, grade, role) values (auth.uid(), v_lab, p_grade, 'admin');
+  insert into lab_join_codes (lab_id, code) values (v_lab, v_code);
+  return query select v_lab, v_code;
+end $$;
+
+-- 参加前の確認用（研究室名などだけを返す）
+create or replace function lookup_lab_by_code(p_code text)
+returns setof labs language sql stable security definer as $$
+  select l.* from labs l join lab_join_codes c on c.lab_id = l.id where c.code = upper(p_code)
+$$;
+
+create or replace function join_lab(p_code text, p_grade text)
+returns members language plpgsql security definer as $$
+declare
+  v_lab uuid;
+  v_member members;
+begin
+  select lab_id into v_lab from lab_join_codes where code = upper(p_code);
+  if v_lab is null then raise exception '参加コードが正しくありません'; end if;
+  insert into members (id, lab_id, grade, role) values (auth.uid(), v_lab, p_grade, 'member') returning * into v_member;
+  return v_member;
+end $$;
 
 -- 相談は誰でも送れる（スパム対策は Edge Function / captcha で別途）、読めるのはテーマ担当者のみ
 create policy "誰でも相談を送信" on consult_requests for insert with check (true);

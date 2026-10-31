@@ -13,21 +13,25 @@ import type {
   ConsultRequestWithContext,
   Entry,
   EntryWithTheme,
+  Grade,
   Lab,
+  LabJoinCode,
   Member,
+  NewLab,
+  NewTheme,
   NewConsultRequest,
   NewEntry,
   Theme,
   ThemeWithLab,
 } from "@/types/db";
 import type { CompressedImage } from "@/lib/image";
-import { mockConsultRequests, mockEntries, mockLabs, mockMembers, mockThemes } from "@/data/mock";
+import { mockConsultRequests, mockEntries, mockJoinCodes, mockLabs, mockMembers, mockThemes } from "@/data/mock";
 
 /* ------------------------------------------------------------------ */
 /* モックストア                                                         */
 /* ------------------------------------------------------------------ */
 
-const STORAGE_KEY = "labtrail:mock-db:v3";
+const STORAGE_KEY = "labtrail:mock-db:v4";
 
 interface MockDb {
   labs: Lab[];
@@ -35,6 +39,7 @@ interface MockDb {
   themes: Theme[];
   entries: Entry[];
   consult_requests: ConsultRequest[];
+  lab_join_codes: LabJoinCode[];
 }
 
 function seed(): MockDb {
@@ -44,6 +49,7 @@ function seed(): MockDb {
     themes: mockThemes,
     entries: mockEntries,
     consult_requests: mockConsultRequests,
+    lab_join_codes: mockJoinCodes,
   });
 }
 
@@ -341,6 +347,94 @@ export async function listConsultRequestsForOwner(memberId: string): Promise<Con
       theme: db.themes.find((t) => t.id === c.theme_id)!,
       entry: c.entry_id ? db.entries.find((e) => e.id === c.entry_id) ?? null : null,
     }));
+}
+
+/* ------------------------------------------------------------------ */
+/* 研究室の作成・参加、テーマの作成                                     */
+/* ------------------------------------------------------------------ */
+
+const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // 0/O・1/I など紛らわしい文字を除く
+
+function generateJoinCode(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(8));
+  return Array.from(bytes, (b) => CODE_CHARS[b % CODE_CHARS.length]).join("");
+}
+
+/** 入力されたコードを正規化（小文字・ハイフン・空白を許容） */
+export function normalizeJoinCode(input: string) {
+  return input.toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+/** 表示用に4桁ごとに区切る: ABCD2345 → ABCD-2345 */
+export function formatJoinCode(code: string) {
+  return code.replace(/^(.{4})(.+)$/, "$1-$2");
+}
+
+/**
+ * 代表者が研究室を作成する。作成者は role = "admin"（代表者）のメンバーになり、参加コードが発行される。
+ * Supabase 版: RPC `create_lab(name, university, description, tags, grade)` を security definer で用意し、
+ *             labs / members / lab_join_codes への挿入を1トランザクションで行う。
+ */
+export async function createLab(input: NewLab, owner: { userId: string; grade: Grade }): Promise<{ lab: Lab; code: string }> {
+  await delay(400);
+  if (db.members.some((m) => m.id === owner.userId)) throw new Error("すでに研究室に所属しています");
+  const lab: Lab = { ...input, id: newId("lab"), slug: `lab-${crypto.randomUUID().slice(0, 6)}`, is_public: true };
+  const code = generateJoinCode();
+  db.labs.push(lab);
+  db.members.push({ id: owner.userId, lab_id: lab.id, grade: owner.grade, role: "admin" });
+  db.lab_join_codes.push({ lab_id: lab.id, code });
+  persist();
+  return { lab, code };
+}
+
+/** 参加コードから研究室を探す（参加前の確認表示用）。Supabase 版: RPC `lookup_lab_by_code(code)` */
+export async function findLabByJoinCode(input: string): Promise<Lab | null> {
+  await delay(200);
+  const code = normalizeJoinCode(input);
+  const row = db.lab_join_codes.find((c) => c.code === code);
+  return row ? db.labs.find((l) => l.id === row.lab_id) ?? null : null;
+}
+
+/** 参加コードで研究室に参加する。Supabase 版: RPC `join_lab(code, grade)` */
+export async function joinLab(input: string, user: { userId: string; grade: Grade }): Promise<Member> {
+  await delay(300);
+  const code = normalizeJoinCode(input);
+  const row = db.lab_join_codes.find((c) => c.code === code);
+  if (!row) throw new Error("参加コードが正しくありません");
+  if (db.members.some((m) => m.id === user.userId)) throw new Error("すでに研究室に所属しています");
+  const member: Member = { id: user.userId, lab_id: row.lab_id, grade: user.grade, role: "member" };
+  db.members.push(member);
+  persist();
+  return member;
+}
+
+/** 代表者向け: 参加コードを取得 */
+export async function getJoinCode(labId: string): Promise<LabJoinCode | null> {
+  await delay(0);
+  return db.lab_join_codes.find((c) => c.lab_id === labId) ?? null;
+}
+
+/** 代表者向け: 参加コードを作り直す（古いコードは使えなくなる） */
+export async function regenerateJoinCode(labId: string): Promise<string> {
+  await delay(200);
+  const code = generateJoinCode();
+  db.lab_join_codes = [...db.lab_join_codes.filter((c) => c.lab_id !== labId), { lab_id: labId, code }];
+  persist();
+  return code;
+}
+
+export async function countLabMembers(labId: string): Promise<number> {
+  await delay(0);
+  return db.members.filter((m) => m.lab_id === labId).length;
+}
+
+/** 自分のテーマを作る。存在（タイトル・概要・タグ・担当の学年）は公開される */
+export async function createTheme(input: NewTheme, owner: Member): Promise<Theme> {
+  await delay(300);
+  const theme: Theme = { ...input, id: newId("th"), lab_id: owner.lab_id, owner_id: owner.id, visibility: "public" };
+  db.themes.push(theme);
+  persist();
+  return theme;
 }
 
 /* ------------------------------------------------------------------ */
