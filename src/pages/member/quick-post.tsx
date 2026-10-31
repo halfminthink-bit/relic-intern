@@ -4,6 +4,7 @@ import { Camera, ChevronRight, FolderGit2, Loader2, Lock, Send, X } from "lucide
 import { toast } from "sonner";
 import { createEntry, listPostableThemes, listThemeEntries, uploadImage } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { STORAGE_KEYS } from "@/lib/storage";
 import { useAsync } from "@/hooks/use-async";
 import { compressImage, type CompressedImage } from "@/lib/image";
 import { timeAgo } from "@/lib/format";
@@ -13,7 +14,7 @@ import { NativeSelect } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
-const LAST_THEME_KEY = "labtrail:last-theme";
+const LAST_THEME_KEY = STORAGE_KEYS.lastTheme;
 
 type PendingImage = { preview: string; status: "compressing" | "ready"; data?: CompressedImage };
 

@@ -10,8 +10,9 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import type { Lab, Member } from "@/types/db";
 import { getMember } from "@/lib/api";
 import { DEMO_MEMBER_ID } from "@/data/mock";
+import { STORAGE_KEYS } from "@/lib/storage";
 
-const SESSION_KEY = "labtrail:mock-session:v2";
+const SESSION_KEY = STORAGE_KEYS.session;
 
 export interface Session {
   /** Supabase では auth.users.id。members.id と同じ値 */
