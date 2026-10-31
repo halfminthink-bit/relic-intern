@@ -4,6 +4,7 @@ import { ArrowLeft, CheckCircle2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { createTheme } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { STORAGE_KEYS } from "@/lib/storage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,7 +27,7 @@ export default function NewThemePage() {
     setSaving(true);
     try {
       const theme = await createTheme({ title: title.trim(), summary: summary.trim(), tags }, member!);
-      localStorage.setItem("labtrail:last-theme", theme.id);
+      localStorage.setItem(STORAGE_KEYS.lastTheme, theme.id);
       toast.success("テーマを作りました", { description: "さっそく最初のメモを書いてみましょう。" });
       navigate(`/app/new?theme=${theme.id}`);
     } catch {

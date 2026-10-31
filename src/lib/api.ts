@@ -25,13 +25,14 @@ import type {
   ThemeWithLab,
 } from "@/types/db";
 import type { CompressedImage } from "@/lib/image";
+import { purgeLegacyStorage, STORAGE_KEYS } from "@/lib/storage";
 import { mockConsultRequests, mockEntries, mockJoinCodes, mockLabs, mockMembers, mockThemes } from "@/data/mock";
 
 /* ------------------------------------------------------------------ */
 /* モックストア                                                         */
 /* ------------------------------------------------------------------ */
 
-const STORAGE_KEY = "labtrail:mock-db:v4";
+const STORAGE_KEY = STORAGE_KEYS.db;
 
 interface MockDb {
   labs: Lab[];
@@ -63,6 +64,8 @@ function load(): MockDb {
   return seed();
 }
 
+// 古い版の保存データ（以前に入力した研究室・記録など）を消してから読み込む
+purgeLegacyStorage();
 let db: MockDb = load();
 
 function persist() {
