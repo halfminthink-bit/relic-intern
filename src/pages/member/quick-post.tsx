@@ -102,7 +102,7 @@ export default function QuickPostPage() {
         <EmptyState icon={<FolderGit2 />} title="まずはテーマを作りましょう">
           記録はテーマごとに残します。研究テーマを1つ作ると、ここからすぐ書けるようになります。
           <Button asChild className="mt-4">
-            <Link to="/app/themes">マイテーマへ</Link>
+            <Link to="/app/themes/new">テーマを作る</Link>
           </Button>
         </EmptyState>
       </div>

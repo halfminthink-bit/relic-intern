@@ -15,11 +15,13 @@ const NAV = [
 
 /** メンバー向け画面の枠。スマホでは下部タブ、PCでは上部ナビ */
 export function MemberLayout() {
-  const { member, loading, signOut } = useAuth();
+  const { session, member, loading, signOut } = useAuth();
   const location = useLocation();
 
   if (loading) return <LoadingState />;
-  if (!member) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  if (!session) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  // ログイン済みでも研究室に未所属なら、作成 or 参加の画面へ
+  if (!member) return <Navigate to="/welcome" replace />;
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -45,10 +47,13 @@ export function MemberLayout() {
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-2">
-            <div className="hidden text-right text-xs leading-tight sm:block">
+            <Link to="/app/lab" className="hidden rounded-md px-2 py-1 text-right text-xs leading-tight hover:bg-secondary sm:block">
               <div className="font-medium">{member.lab.name}</div>
-              <div className="text-muted-foreground">{member.grade}</div>
-            </div>
+              <div className="text-muted-foreground">
+                {member.grade}
+                {member.role === "admin" && "・代表者"}
+              </div>
+            </Link>
             <Button asChild size="sm" className="hidden md:inline-flex">
               <Link to="/app/new">
                 <PenLine />

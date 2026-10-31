@@ -7,6 +7,7 @@
  *   themes(id, lab_id, owner_id, title, summary, tags, visibility)
  *   entries(id, theme_id, author_id, type, body, attachments, is_public, created_at)
  *   consult_requests(id, theme_id, entry_id, from_name, from_affiliation, from_email, message, created_at)
+ *   lab_join_codes(lab_id, code)   … 参加コード。外部に見せないため labs とは別テーブル（代表者のみ読める）
  */
 
 export type UUID = string;
@@ -28,6 +29,8 @@ export interface Lab {
 
 /** 学年。外部には学年のみ表示し、実名は扱わない */
 export type Grade = "B3" | "B4" | "M1" | "M2" | "D1" | "D2" | "D3" | "PD" | "教員";
+export const GRADES: Grade[] = ["B3", "B4", "M1", "M2", "D1", "D2", "D3", "PD", "教員"];
+/** admin = 研究室の代表者（研究室を作った人）。member = 参加コードで参加した人 */
 export type MemberRole = "admin" | "member";
 
 export interface Member {
@@ -95,10 +98,18 @@ export interface ConsultRequest {
   created_at: Timestamp;
 }
 
+export interface LabJoinCode {
+  lab_id: UUID;
+  /** 大文字英数字8桁（表示は ABCD-2345 のように4桁ごとに区切る） */
+  code: string;
+}
+
 /* ---------- 挿入用（id / created_at は DB 側で採番） ---------- */
 
 export type NewEntry = Omit<Entry, "id" | "created_at">;
 export type NewConsultRequest = Omit<ConsultRequest, "id" | "created_at">;
+export type NewLab = Pick<Lab, "name" | "university" | "description" | "tags">;
+export type NewTheme = Pick<Theme, "title" | "summary" | "tags">;
 
 /* ---------- 画面表示用に結合した型 ---------- */
 

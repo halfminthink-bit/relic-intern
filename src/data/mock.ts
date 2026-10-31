@@ -2,7 +2,7 @@
  * モックデータ（すべて架空のサンプルです）。
  * Supabase 接続後は supabase/seed.sql 等に置き換える想定。
  */
-import type { Attachment, ConsultRequest, Entry, EntryType, Lab, Member, Theme } from "@/types/db";
+import type { Attachment, ConsultRequest, Entry, EntryType, Lab, LabJoinCode, Member, Theme } from "@/types/db";
 import { placeholderImage } from "./placeholder";
 
 /** 現在時刻からの相対日時を ISO 文字列で返す（草グラフが常に埋まるように） */
@@ -134,25 +134,25 @@ export const mockMembers: Member[] = [
   { id: "mem-0101", lab_id: "lab-01", grade: "M2", role: "admin" },
   { id: "mem-0102", lab_id: "lab-01", grade: "D1", role: "member" },
   { id: "mem-0103", lab_id: "lab-01", grade: "B4", role: "member" },
-  { id: "mem-0104", lab_id: "lab-01", grade: "教員", role: "admin" },
-  { id: "mem-0201", lab_id: "lab-02", grade: "D2", role: "member" },
+  { id: "mem-0104", lab_id: "lab-01", grade: "教員", role: "member" },
+  { id: "mem-0201", lab_id: "lab-02", grade: "D2", role: "admin" },
   { id: "mem-0202", lab_id: "lab-02", grade: "M1", role: "member" },
-  { id: "mem-0301", lab_id: "lab-03", grade: "M2", role: "member" },
+  { id: "mem-0301", lab_id: "lab-03", grade: "M2", role: "admin" },
   { id: "mem-0302", lab_id: "lab-03", grade: "D1", role: "member" },
-  { id: "mem-0401", lab_id: "lab-04", grade: "M1", role: "member" },
+  { id: "mem-0401", lab_id: "lab-04", grade: "M1", role: "admin" },
   { id: "mem-0402", lab_id: "lab-04", grade: "B4", role: "member" },
-  { id: "mem-0501", lab_id: "lab-05", grade: "D3", role: "member" },
-  { id: "mem-0601", lab_id: "lab-06", grade: "M2", role: "member" },
+  { id: "mem-0501", lab_id: "lab-05", grade: "D3", role: "admin" },
+  { id: "mem-0601", lab_id: "lab-06", grade: "M2", role: "admin" },
   { id: "mem-0602", lab_id: "lab-06", grade: "M1", role: "member" },
-  { id: "mem-0701", lab_id: "lab-07", grade: "PD", role: "member" },
-  { id: "mem-0801", lab_id: "lab-08", grade: "D1", role: "member" },
+  { id: "mem-0701", lab_id: "lab-07", grade: "PD", role: "admin" },
+  { id: "mem-0801", lab_id: "lab-08", grade: "D1", role: "admin" },
   { id: "mem-0802", lab_id: "lab-08", grade: "M2", role: "member" },
-  { id: "mem-0901", lab_id: "lab-09", grade: "M1", role: "member" },
+  { id: "mem-0901", lab_id: "lab-09", grade: "M1", role: "admin" },
   { id: "mem-1001", lab_id: "lab-10", grade: "B4", role: "member" },
-  { id: "mem-1002", lab_id: "lab-10", grade: "D2", role: "member" },
+  { id: "mem-1002", lab_id: "lab-10", grade: "D2", role: "admin" },
 ];
 
-/** デモでログインするメンバー（東都大学 ナノカーボン材料研究室 / M2） */
+/** デモでログインするメンバー（東都大学 ナノカーボン材料研究室 / M2 / 代表者） */
 export const DEMO_MEMBER_ID = "mem-0101";
 
 /* ------------------------------------------------------------------ */
@@ -475,3 +475,13 @@ export const mockConsultRequests: ConsultRequest[] = [
     created_at: ago(6, 11, 5),
   },
 ];
+
+/* ------------------------------------------------------------------ */
+/* lab_join_codes（参加コード。代表者だけが見られる）                   */
+/* ------------------------------------------------------------------ */
+
+export const mockJoinCodes: LabJoinCode[] = mockLabs.map((lab, i) => ({
+  lab_id: lab.id,
+  // 例: lab-01 → "NANO2401"。デモでは「NANO-2403」（北杜大学 二次元材料研究室）などで参加を試せる
+  code: `NANO24${String(i + 1).padStart(2, "0")}`,
+}));
