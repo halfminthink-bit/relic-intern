@@ -51,8 +51,12 @@ export interface Theme {
   visibility: ThemeVisibility;
 }
 
-/** 記録の種類: 進捗 / 困りごと / 達成 / メモ */
-export type EntryType = "progress" | "trouble" | "achievement" | "memo";
+/**
+ * 記録の種類。
+ *   memo    … ふだんの記録（既定・非公開）
+ *   trouble … 「相談に出す」を押した記録（公開され、外部から相談を受けられる）
+ */
+export type EntryType = "memo" | "trouble";
 
 export type AttachmentKind = "image" | "file" | "link";
 

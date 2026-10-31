@@ -1,12 +1,10 @@
-import { CircleHelp, NotebookPen, TrendingUp, Trophy, type LucideIcon } from "lucide-react";
+import { MessageCircleQuestion, NotebookPen, type LucideIcon } from "lucide-react";
 import type { EntryType } from "@/types/db";
 import { ENTRY_TYPE_META } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
 export const ENTRY_TYPE_STYLE: Record<EntryType, { icon: LucideIcon; text: string; bg: string; ring: string; solid: string }> = {
-  progress: { icon: TrendingUp, text: "text-progress", bg: "bg-progress-soft", ring: "border-progress/40", solid: "bg-progress" },
-  trouble: { icon: CircleHelp, text: "text-trouble", bg: "bg-trouble-soft", ring: "border-trouble/40", solid: "bg-trouble" },
-  achievement: { icon: Trophy, text: "text-achievement", bg: "bg-achievement-soft", ring: "border-achievement/40", solid: "bg-achievement" },
+  trouble: { icon: MessageCircleQuestion, text: "text-trouble", bg: "bg-trouble-soft", ring: "border-trouble/40", solid: "bg-trouble" },
   memo: { icon: NotebookPen, text: "text-memo", bg: "bg-memo-soft", ring: "border-memo/40", solid: "bg-memo" },
 };
 

@@ -28,6 +28,7 @@ export function AttachmentList({ attachments, className }: { attachments: Attach
                 src={a.thumbnail_url ?? a.url}
                 alt={a.name}
                 loading="lazy"
+                decoding="async"
                 className="h-20 w-28 object-cover transition-opacity group-hover:opacity-90 sm:h-24 sm:w-36"
               />
             </button>

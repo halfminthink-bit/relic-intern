@@ -26,14 +26,10 @@
     --ring: 176 52% 30%;
     --radius: 0.5rem;
 
-    --entry-progress: 211 62% 42%;
-    --entry-progress-soft: 211 70% 95%;
     --entry-trouble: 28 80% 42%;
     --entry-trouble-soft: 36 90% 94%;
-    --entry-achievement: 146 50% 32%;
-    --entry-achievement-soft: 140 45% 93%;
-    --entry-memo: 262 22% 46%;
-    --entry-memo-soft: 262 30% 95%;
+    --entry-memo: 215 12% 42%;
+    --entry-memo-soft: 40 14% 94%;
   }
 }
 

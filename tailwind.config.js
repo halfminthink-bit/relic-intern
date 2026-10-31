@@ -25,9 +25,7 @@ export default {
         popover: { DEFAULT: "hsl(var(--popover))", foreground: "hsl(var(--popover-foreground))" },
         card: { DEFAULT: "hsl(var(--card))", foreground: "hsl(var(--card-foreground))" },
         // 記録の種類ごとの色
-        progress: { DEFAULT: "hsl(var(--entry-progress))", soft: "hsl(var(--entry-progress-soft))" },
         trouble: { DEFAULT: "hsl(var(--entry-trouble))", soft: "hsl(var(--entry-trouble-soft))" },
-        achievement: { DEFAULT: "hsl(var(--entry-achievement))", soft: "hsl(var(--entry-achievement-soft))" },
         memo: { DEFAULT: "hsl(var(--entry-memo))", soft: "hsl(var(--entry-memo-soft))" },
       },
       borderRadius: {
