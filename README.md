@@ -20,6 +20,14 @@ npm run dev
 - **新規ユーザーとして試す** … 研究室の作成（代表者）や、参加コードでの参加から始める
   （モックの参加コード例：`NANO-2403` = 北杜大学 二次元材料研究室）
 
+## 公開範囲（Vercel）
+
+現在、デプロイ先は `middleware.ts`（Vercel Routing Middleware）で**サイト全体にパスワードをかけて非公開**にしています。
+
+- Vercel の Settings → Environment Variables に `SITE_BASIC_AUTH` を「ID:パスワード」の形（例: `labtrail:長めのパスワード`）で追加し、再デプロイすると、その組み合わせで入れる
+- `SITE_BASIC_AUTH` が未設定のあいだは誰も入れない
+- 公開に戻すときは `middleware.ts` を削除する
+
 ## 使い方の流れ
 
 1. **代表者が研究室を作る**（名前・大学・紹介・分野タグ・学年）→ 参加コードとリンクが発行される
@@ -36,7 +44,7 @@ npm run dev
 | UI部品 | **shadcn/ui**（Radix UI ベース） | `src/components/ui/` にコードとして同梱。`components.json` もあるので `npx shadcn add` で追加可能 |
 | ルーティング | React Router 6 | |
 | アイコン／トースト | lucide-react／sonner | shadcn/ui 標準 |
-| ホスティング | Vercel | `vercel.json` で SPA のルーティングを設定済み。`main` へのマージで自動デプロイ |
+| ホスティング | Vercel | `vercel.json` で SPA のルーティングを設定済み。`main` へのマージで自動デプロイ。`middleware.ts` でサイト全体を Basic 認証で非公開にしている |
 | バックエンド（予定） | Supabase（Auth: マジックリンク / Postgres / Storage） | `supabase/schema.sql` にテーブル・RLS・RPC のたたき台 |
 
 ## サイトマップ
