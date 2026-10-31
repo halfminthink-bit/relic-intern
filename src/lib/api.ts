@@ -118,58 +118,64 @@ export interface ExploreQuery {
   tags?: string[];
 }
 
+export type ExploreTheme = Theme & { owner: Member; openConsultCount: number; lastActivity: string | null };
+
 export interface ExploreResult {
-  labs: (Lab & { themeCount: number })[];
-  themes: (ThemeWithLab & { publicEntryCount: number; lastActivity: string | null })[];
+  /** 研究室ごとに、条件に合うテーマを入れ子にしたもの */
+  labs: (Lab & { themes: ExploreTheme[] })[];
+  /** 条件に合うテーマの中で、相談を待っている記録（新しい順） */
+  troubles: EntryWithTheme[];
 }
 
 /**
+ * 探す画面の検索。研究室を主役にし、条件に合うテーマを入れ子で返す。
+ * - 研究室そのものが条件に合えば、その研究室のテーマはすべて表示
+ * - そうでなければ、条件に合うテーマを持つ研究室だけを、合うテーマだけ付けて表示
+ *
  * Supabase 版の例:
- *   supabase.from("themes").select("*, lab:labs!inner(*)").neq("visibility", "private")
- *     .eq("lab.is_public", true).contains("tags", tags).or(`title.ilike.%${q}%,summary.ilike.%${q}%`)
+ *   supabase.from("labs").select("*, themes(*, owner:members(grade))").eq("is_public", true)
+ *   → タグは .contains("tags", tags)、キーワードは .or("name.ilike.%q%,...") や全文検索で絞り込む
  */
 export async function explore({ q = "", tags = [] }: ExploreQuery): Promise<ExploreResult> {
   await delay();
   const kw = q.trim().toLowerCase();
   const hasAll = (itemTags: string[]) => tags.every((t) => itemTags.includes(t));
+  const hasKw = (...fields: string[]) => !kw || fields.some((f) => f.toLowerCase().includes(kw));
 
-  const visibleLabs = db.labs.filter(isLabVisible);
-  const visibleThemes = db.themes.filter((t) => isThemeVisible(t, labOf(t)));
+  const toExploreTheme = (t: Theme): ExploreTheme => {
+    const open = db.entries.filter((e) => e.theme_id === t.id && isEntryVisible(e, t, labOf(t))).sort(byNewest);
+    const all = db.entries.filter((e) => e.theme_id === t.id).sort(byNewest);
+    return { ...t, owner: memberOf(t.owner_id), openConsultCount: open.length, lastActivity: all[0]?.created_at ?? null };
+  };
 
-  const themes = visibleThemes
-    .filter((t) => hasAll(t.tags))
-    .filter((t) => {
-      if (!kw) return true;
-      const lab = labOf(t);
-      return [t.title, t.summary, lab.name, lab.university].some((s) => s.toLowerCase().includes(kw));
+  const labs = db.labs
+    .filter(isLabVisible)
+    .map((lab) => {
+      const labThemes = db.themes.filter((t) => t.lab_id === lab.id && isThemeVisible(t, lab));
+      const labMatches = hasAll(lab.tags) && hasKw(lab.name, lab.university, lab.description);
+      const matched = labThemes.filter((t) => hasAll(t.tags) && hasKw(t.title, t.summary, lab.name, lab.university));
+      const shown = labMatches ? labThemes : matched;
+      return { lab, matched: labMatches || matched.length > 0, themes: shown.map(toExploreTheme) };
     })
-    .map((t) => {
-      const entries = db.entries.filter((e) => e.theme_id === t.id && isEntryVisible(e, t, labOf(t))).sort(byNewest);
-      return { ...withLab(t), publicEntryCount: entries.length, lastActivity: entries[0]?.created_at ?? null };
-    })
-    .sort((a, b) => (b.lastActivity ?? "").localeCompare(a.lastActivity ?? ""));
+    .filter((x) => x.matched)
+    .map(({ lab, themes }) => ({
+      ...lab,
+      themes: themes.sort((a, b) => (b.lastActivity ?? "").localeCompare(a.lastActivity ?? "")),
+    }))
+    // 最近動きのある研究室を上に
+    .sort((a, b) => (b.themes[0]?.lastActivity ?? "").localeCompare(a.themes[0]?.lastActivity ?? ""));
 
-  const labs = visibleLabs
-    .filter((l) => hasAll(l.tags))
-    .filter((l) => !kw || [l.name, l.university, l.description].some((s) => s.toLowerCase().includes(kw)))
-    .map((l) => ({ ...l, themeCount: visibleThemes.filter((t) => t.lab_id === l.id).length }));
-
-  return { labs, themes };
-}
-
-/** 外部に公開されている最近の困りごと（トップページの「相談を待っている困りごと」） */
-export async function listRecentPublicTroubles(limit = 5): Promise<EntryWithTheme[]> {
-  await delay();
-  return db.entries
-    .filter((e) => e.type === "trouble")
+  const themeIds = new Set(labs.flatMap((l) => l.themes.map((t) => t.id)));
+  const troubles = db.entries
+    .filter((e) => e.type === "trouble" && themeIds.has(e.theme_id))
     .map((e) => {
       const theme = db.themes.find((t) => t.id === e.theme_id)!;
-      return { e, theme, lab: labOf(theme) };
+      return { ...e, theme, lab: labOf(theme), author: memberOf(e.author_id) };
     })
-    .filter(({ e, theme, lab }) => isEntryVisible(e, theme, lab))
-    .sort((a, b) => byNewest(a.e, b.e))
-    .slice(0, limit)
-    .map(({ e, theme, lab }) => ({ ...e, theme, lab, author: memberOf(e.author_id) }));
+    .filter((e) => isEntryVisible(e, e.theme, e.lab))
+    .sort(byNewest);
+
+  return { labs, troubles };
 }
 
 export interface LabDetail {
