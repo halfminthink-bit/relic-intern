@@ -4,7 +4,6 @@ import { getPublicLab } from "@/lib/api";
 import { useAsync } from "@/hooks/use-async";
 import { plainSummary, timeAgo } from "@/lib/format";
 import { TagList } from "@/components/tags";
-import { ThemeVisibilityBadge } from "@/components/visibility";
 import { EmptyState, LoadingState } from "@/components/states";
 import NotFoundPage from "@/pages/not-found";
 
@@ -51,13 +50,12 @@ export default function LabPage() {
                     <Link to={`/labs/${lab.slug}/themes/${t.id}`} className="font-semibold text-primary hover:underline">
                       {t.title}
                     </Link>
-                    <ThemeVisibilityBadge visibility={t.visibility} />
                   </div>
                   <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">{plainSummary(t.summary)}</p>
                   <TagList tags={t.tags} className="mt-3" />
                   <div className="mt-3 flex flex-wrap gap-x-4 text-xs text-muted-foreground">
                     <span>担当 {t.owner.grade}</span>
-                    {t.visibility === "public" && <span>公開記録 {t.publicEntryCount}件</span>}
+                    {t.publicEntryCount > 0 && <span className="text-trouble">相談中 {t.publicEntryCount}件</span>}
                     {t.lastActivity && <span>最終更新 {timeAgo(t.lastActivity)}</span>}
                   </div>
                 </li>

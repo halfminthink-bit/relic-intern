@@ -1,29 +1,32 @@
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, ExternalLink, History, PenLine, Sprout } from "lucide-react";
+import { ArrowLeft, ExternalLink, History, Inbox, Loader2, MessageCircleQuestion, PenLine, Sprout, Undo2 } from "lucide-react";
 import { toast } from "sonner";
-import type { EntryType, ThemeVisibility } from "@/types/db";
-import { getThemeForMember, listActivity, listThemeEntries, updateEntryVisibility, updateThemeVisibility } from "@/lib/api";
+import type { EntryType } from "@/types/db";
+import { getThemeForMember, listActivity, listThemeEntries, setEntryConsultation } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import { useAsync } from "@/hooks/use-async";
-import { THEME_VISIBILITY_META } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ContributionGraph } from "@/components/contribution-graph";
 import { EntryTimeline } from "@/components/entry-timeline";
 import { EntryTypeFilter, countByType } from "@/components/entry-type-filter";
 import { TagList } from "@/components/tags";
-import { ThemeVisibilitySelector } from "@/components/visibility";
 import { EmptyState, LoadingState } from "@/components/states";
 import NotFoundPage from "@/pages/not-found";
-import { cn } from "@/lib/utils";
+
+type Entries = NonNullable<Awaited<ReturnType<typeof listThemeEntries>>>;
 
 export default function MyThemeDetailPage() {
   const { themeId = "" } = useParams();
+  const { member } = useAuth();
   const theme = useAsync(() => getThemeForMember(themeId), [themeId]);
   const entries = useAsync(() => listThemeEntries(themeId), [themeId]);
   const activity = useAsync(() => listActivity({ themeId }), [themeId]);
   const [filter, setFilter] = useState<EntryType | "all">("all");
+  const [confirming, setConfirming] = useState<Entries[number] | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   const filtered = useMemo(() => (entries.data ?? []).filter((e) => filter === "all" || e.type === filter), [entries.data, filter]);
   const counts = useMemo(() => countByType(entries.data ?? []), [entries.data]);
@@ -31,17 +34,23 @@ export default function MyThemeDetailPage() {
   if (theme.loading) return <LoadingState />;
   if (!theme.data) return <NotFoundPage message="テーマが見つかりませんでした。" />;
   const t = theme.data;
-  const externallyVisible = t.lab.is_public && t.visibility !== "private";
 
-  async function changeVisibility(v: ThemeVisibility) {
-    theme.setData({ ...t, visibility: v });
-    await updateThemeVisibility(t.id, v);
-    toast.success(`公開範囲を「${THEME_VISIBILITY_META[v].label}」にしました`);
-  }
-
-  async function toggleEntry(id: string, isPublic: boolean) {
-    entries.setData((xs) => xs?.map((e) => (e.id === id ? { ...e, is_public: isPublic } : e)));
-    await updateEntryVisibility(id, isPublic);
+  async function setConsultation(id: string, open: boolean) {
+    setBusyId(id);
+    try {
+      await setEntryConsultation(id, open);
+      entries.setData((xs) => xs?.map((e) => (e.id === id ? { ...e, type: open ? "trouble" : "memo", is_public: open } : e)));
+      if (open) {
+        toast.success("相談に出しました", { description: "テーマの公開ページに表示され、外部から相談を受け付けます。" });
+      } else {
+        toast("相談を取り下げました", {
+          description: "非公開のメモに戻しました。",
+          action: { label: "元に戻す", onClick: () => void setConsultation(id, true) },
+        });
+      }
+    } finally {
+      setBusyId(null);
+    }
   }
 
   return (
@@ -60,29 +69,14 @@ export default function MyThemeDetailPage() {
               このテーマに記録する
             </Link>
           </Button>
-          {externallyVisible && (
-            <Button asChild size="sm" variant="outline">
-              <Link to={`/labs/${t.lab.slug}/themes/${t.id}`}>
-                <ExternalLink />
-                公開ページを見る
-              </Link>
-            </Button>
-          )}
+          <Button asChild size="sm" variant="outline">
+            <Link to={`/labs/${t.lab.slug}/themes/${t.id}`}>
+              <ExternalLink />
+              公開ページを見る
+            </Link>
+          </Button>
         </div>
       </div>
-
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm">テーマの公開範囲</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <ThemeVisibilitySelector value={t.visibility} onChange={changeVisibility} />
-          <p className="text-xs text-muted-foreground">{THEME_VISIBILITY_META[t.visibility].description}</p>
-          {!t.lab.is_public && (
-            <p className="text-xs text-trouble">研究室が非公開のため、現在はどの設定でも外部には表示されません。</p>
-          )}
-        </CardContent>
-      </Card>
 
       <Card>
         <CardHeader className="pb-3">
@@ -95,11 +89,14 @@ export default function MyThemeDetailPage() {
       </Card>
 
       <section>
-        <h2 className="mb-3 flex items-center gap-2 text-base font-semibold">
+        <h2 className="mb-1 flex items-center gap-2 text-base font-semibold">
           <History className="h-4 w-4 text-muted-foreground" />
-          タイムライン
+          記録
         </h2>
-        {entries.loading ? (
+        <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+          記録はすべて研究室内だけで見えるメモです。「相談に出す」を押した記録だけが公開され、外部の研究者から相談・アドバイスを受けられます。
+        </p>
+        {entries.loading && !entries.data ? (
           <LoadingState />
         ) : entries.data!.length === 0 ? (
           <EmptyState title="まだ記録がありません">実験の合間に、まずは一行メモから始めてみましょう。</EmptyState>
@@ -107,24 +104,90 @@ export default function MyThemeDetailPage() {
           <>
             <EntryTypeFilter value={filter} onChange={setFilter} counts={counts} />
             <div className="mt-4">
-              <EntryTimeline
-                entries={filtered}
-                renderMeta={(e) => {
-                  const effective = e.is_public && t.visibility === "public" && t.lab.is_public;
-                  return (
-                    <label className="flex cursor-pointer items-center gap-2" title={e.is_public && !effective ? "テーマ／研究室が非公開のため外部には表示されません" : undefined}>
-                      <span className={cn("text-xs", e.is_public ? "text-primary" : "text-muted-foreground", e.is_public && !effective && "line-through decoration-muted-foreground")}>
-                        {e.is_public ? "公開" : "非公開"}
-                      </span>
-                      <Switch checked={e.is_public} onCheckedChange={(v) => toggleEntry(e.id, v)} aria-label="この記録を公開する" size="sm" />
-                    </label>
-                  );
-                }}
-              />
+              {filtered.length === 0 ? (
+                <EmptyState icon={<MessageCircleQuestion />} title="相談中の記録はありません">
+                  困っている記録の「相談に出す」を押すと、ここに表示されます。
+                </EmptyState>
+              ) : (
+                <EntryTimeline
+                  entries={filtered}
+                  renderActions={(e) =>
+                    e.type === "trouble" ? (
+                      <>
+                        {e.consultCount > 0 && (
+                          <Button asChild variant="ghost" size="sm" className="text-trouble hover:text-trouble">
+                            <Link to="/app/consults">
+                              <Inbox />
+                              相談 {e.consultCount}件
+                            </Link>
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="ml-auto text-muted-foreground"
+                          disabled={busyId === e.id}
+                          onClick={() => setConsultation(e.id, false)}
+                        >
+                          {busyId === e.id ? <Loader2 className="animate-spin" /> : <Undo2 />}
+                          相談を取り下げる
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="ml-auto border-trouble/40 text-trouble hover:bg-trouble-soft hover:text-trouble"
+                        onClick={() => setConfirming(e)}
+                      >
+                        <MessageCircleQuestion />
+                        相談に出す
+                      </Button>
+                    )
+                  }
+                />
+              )}
             </div>
           </>
         )}
       </section>
+
+      <Dialog open={!!confirming} onOpenChange={(o) => !o && setConfirming(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>この記録を相談に出しますか？</DialogTitle>
+            <DialogDescription>
+              テーマの公開ページに表示され、同じ分野の研究者から相談・アドバイスを受け付けます。いつでも取り下げられます。
+            </DialogDescription>
+          </DialogHeader>
+          {confirming && (
+            <div className="rounded-md border bg-secondary/50 p-3 text-sm">
+              <p className="line-clamp-4 whitespace-pre-wrap">{confirming.body}</p>
+              {confirming.attachments.some((a) => a.kind === "image") && <p className="mt-2 text-xs text-muted-foreground">添付の写真も公開されます。</p>}
+            </div>
+          )}
+          <ul className="space-y-1 text-xs text-muted-foreground">
+            <li>・外部には学年（{member!.grade}）だけが表示され、名前は出ません</li>
+            <li>・届いた相談は「相談」タブで確認できます</li>
+          </ul>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setConfirming(null)}>
+              キャンセル
+            </Button>
+            <Button
+              className="bg-trouble text-white hover:bg-trouble/90"
+              onClick={() => {
+                const id = confirming!.id;
+                setConfirming(null);
+                void setConsultation(id, true);
+              }}
+            >
+              <MessageCircleQuestion />
+              相談に出す
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

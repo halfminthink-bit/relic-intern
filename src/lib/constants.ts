@@ -1,4 +1,4 @@
-import type { EntryType, ThemeVisibility } from "@/types/db";
+import type { EntryType } from "@/types/db";
 
 export const TAG_GROUPS = [
   { key: "material", label: "材料", tags: ["CNT", "グラフェン", "フラーレン", "二次元材料", "その他ナノ材料"] },
@@ -25,11 +25,6 @@ export const ENTRY_TYPE_META: Record<EntryType, { label: string; description: st
   trouble: { label: "相談中", description: "公開して、外部から相談を受け付けている記録" },
 };
 
-export const THEME_VISIBILITY_META: Record<ThemeVisibility, { label: string; description: string }> = {
-  private: { label: "非公開", description: "研究室メンバーのみ閲覧できます" },
-  summary: { label: "概要のみ公開", description: "テーマの概要とタグだけが外部に表示されます" },
-  public: { label: "記録も公開", description: "概要に加えて、公開にした記録が外部に表示されます" },
-};
 
 /** 画像圧縮の設定（長辺 px と WebP の品質） */
 export const IMAGE_MAX_EDGE = 1200;
