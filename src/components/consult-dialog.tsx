@@ -50,7 +50,7 @@ export function ConsultDialog({
       <DialogContent>
         {sent ? (
           <div className="flex flex-col items-center gap-3 py-6 text-center">
-            <CheckCircle2 className="h-10 w-10 text-achievement" aria-hidden />
+            <CheckCircle2 className="h-10 w-10 text-primary" aria-hidden />
             <DialogTitle>相談を送信しました</DialogTitle>
             <DialogDescription>
               テーマの担当者に届きました。返信はご入力のメールアドレス宛てに届きます。

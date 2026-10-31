@@ -18,10 +18,6 @@ function img(name: string, hue: number, variant: "micro" | "spectrum" | "photo")
   return { kind: "image", url, thumbnail_url: url, name };
 }
 
-function link(name: string, url = "https://drive.google.com/"): Attachment {
-  return { kind: "link", url, name };
-}
-
 /* ------------------------------------------------------------------ */
 /* labs                                                                */
 /* ------------------------------------------------------------------ */
@@ -127,15 +123,6 @@ export const mockLabs: Lab[] = [
     is_public: true,
     tags: ["CNT", "グラフェン", "評価・分析", "実験"],
   },
-  {
-    id: "lab-11",
-    slug: "toto-quantum",
-    name: "量子ナノ構造研究室",
-    university: "東都大学 理学部",
-    description: "【サンプル】非公開の研究室の例です。外部の検索には表示されません。",
-    is_public: false,
-    tags: ["その他ナノ材料", "理論"],
-  },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -163,7 +150,6 @@ export const mockMembers: Member[] = [
   { id: "mem-0901", lab_id: "lab-09", grade: "M1", role: "member" },
   { id: "mem-1001", lab_id: "lab-10", grade: "B4", role: "member" },
   { id: "mem-1002", lab_id: "lab-10", grade: "D2", role: "member" },
-  { id: "mem-1101", lab_id: "lab-11", grade: "M1", role: "member" },
 ];
 
 /** デモでログインするメンバー（東都大学 ナノカーボン材料研究室 / M2） */
@@ -192,7 +178,7 @@ export const mockThemes: Theme[] = [
     summary:
       "分離した半導体型CNTをスピンコートで薄膜化し、トップゲート型トランジスタを作製しています。移動度とオンオフ比の両立が目標です。",
     tags: ["CNT", "デバイス応用", "評価・分析", "実験"],
-    visibility: "summary",
+    visibility: "public",
   },
   {
     id: "th-0103",
@@ -201,7 +187,7 @@ export const mockThemes: Theme[] = [
     title: "CNT分散液の長期保存安定性",
     summary: "分離後のCNT分散液を数か月保存したときの凝集と吸収スペクトル変化を追跡しています。",
     tags: ["CNT", "分散", "評価・分析", "実験"],
-    visibility: "private",
+    visibility: "public",
   },
   {
     id: "th-0201",
@@ -220,7 +206,7 @@ export const mockThemes: Theme[] = [
     title: "hBN上の二次元材料における誘電遮蔽",
     summary: "基板による誘電遮蔽が二次元半導体のバンドギャップに与える影響をモデル化しています。",
     tags: ["二次元材料", "計算・シミュレーション", "理論"],
-    visibility: "summary",
+    visibility: "public",
   },
   {
     id: "th-0301",
@@ -239,7 +225,7 @@ export const mockThemes: Theme[] = [
     title: "hBN/グラフェン積層ヘテロ構造デバイス",
     summary: "ドライ転写でhBN/グラフェン/hBNの積層構造を作製し、高移動度デバイスを目指しています。",
     tags: ["グラフェン", "二次元材料", "デバイス応用", "実験"],
-    visibility: "summary",
+    visibility: "public",
   },
   {
     id: "th-0401",
@@ -303,7 +289,7 @@ export const mockThemes: Theme[] = [
     title: "反応分子動力学によるCNT核生成シミュレーション",
     summary: "ReaxFFを用いて、金属触媒表面での炭素原子の析出とキャップ形成を再現する計算を行っています。",
     tags: ["CNT", "合成", "計算・シミュレーション", "理論"],
-    visibility: "summary",
+    visibility: "public",
   },
   {
     id: "th-0901",
@@ -323,28 +309,21 @@ export const mockThemes: Theme[] = [
     tags: ["CNT", "評価・分析", "実験"],
     visibility: "public",
   },
-  {
-    id: "th-1101",
-    lab_id: "lab-11",
-    owner_id: "mem-1101",
-    title: "非公開研究室のテーマ（例）",
-    summary: "非公開研究室のテーマです。",
-    tags: ["その他ナノ材料", "理論"],
-    visibility: "public",
-  },
 ];
 
 /* ------------------------------------------------------------------ */
 /* entries                                                             */
 /* ------------------------------------------------------------------ */
 
-type EntrySeed = [id: string, themeId: string, authorId: string, type: EntryType, body: string, daysAgo: number, isPublic: boolean, attachments?: Attachment[]];
+/** 元データの種類。相談に出した記録（trouble）だけが公開され、それ以外はすべて非公開のメモになる */
+type SeedType = "progress" | "trouble" | "achievement" | "memo";
+type EntrySeed = [id: string, themeId: string, authorId: string, type: SeedType, body: string, daysAgo: number, isPublic: boolean, attachments?: Attachment[]];
 
 const entrySeeds: EntrySeed[] = [
   // th-0101 ゲルカラム分離（ログインユーザー）
   ["en-0101", "th-0101", "mem-0101", "trouble", "SDS濃度を1.6%→1.8%に上げたら、(6,5)のピークが減って(7,5)が多く吸着されるようになった。濃度を上げると吸着が弱くなるはずなのに逆の傾向で、原因がわからない。同じような経験のある方がいたら相談したいです。", 1, true, [img("吸収スペクトル比較（SDS 1.6% / 1.8%）", 211, "spectrum")]],
   ["en-0102", "th-0101", "mem-0101", "progress", "カラム温度を18℃に固定して3回分離。溶出液の吸収スペクトルを測定。(6,5)純度は 72%、75%、70%。前回より若干ばらつきが小さくなった。", 3, false, [img("溶出液の写真", 176, "photo")]],
-  ["en-0103", "th-0101", "mem-0101", "achievement", "(6,5)の単一カイラリティ純度 91% を初めて達成！ ポイントは、超音波分散後の遠心を 210,000g × 1h に変えたこと。上澄みの回収は上から70%まで。", 9, true, [img("PLマップ（分離後）", 146, "spectrum"), link("生データ（吸収・PL）Googleドライブ")]],
+  ["en-0103", "th-0101", "mem-0101", "achievement", "(6,5)の単一カイラリティ純度 91% を初めて達成！ ポイントは、超音波分散後の遠心を 210,000g × 1h に変えたこと。上澄みの回収は上から70%まで。", 9, true, [img("PLマップ（分離後）", 146, "spectrum")]],
   ["en-0104", "th-0101", "mem-0101", "memo", "ゲルは毎回新しいものを使う方が再現性が高い。再利用は3回まで。洗浄は1% SDSで5カラム体積。", 12, false],
   ["en-0105", "th-0101", "mem-0101", "trouble", "遠心後の上澄みの回収量が毎回ばらつく（2.1〜3.4 mL）。ピペットで上から取っているが、境界がわかりにくい。みなさんどうやって回収していますか？", 20, true],
   ["en-0106", "th-0101", "mem-0101", "progress", "HiPco新ロットで分散液を作製。1% SC、チップ型超音波 30W×1h。吸収スペクトルのバックグラウンドが前ロットより高い。", 27, false, [img("吸収スペクトル（新ロット）", 211, "spectrum")]],
@@ -401,17 +380,16 @@ const entrySeeds: EntrySeed[] = [
   ["en-1002", "th-1001", "mem-1001", "trouble", "785nm 励起でバックグラウンドの蛍光が大きく、RBM のフィッティングが不安定。前処理でおすすめの方法はありますか？", 9, true],
   ["en-1003", "th-1001", "mem-1002", "achievement", "TEM で求めた直径分布と、補正後のラマン推定値の平均直径が 0.03 nm 以内で一致。", 25, true],
 
-  ["en-1101", "th-1101", "mem-1101", "progress", "非公開研究室の記録です。", 3, true],
 ];
 
-const handwrittenEntries: Entry[] = entrySeeds.map(([id, theme_id, author_id, type, body, daysAgo, is_public, attachments]) => ({
+const handwrittenEntries: Entry[] = entrySeeds.map(([id, theme_id, author_id, type, body, daysAgo, , attachments]) => ({
   id,
   theme_id,
   author_id,
-  type,
+  type: type === "trouble" ? "trouble" : "memo",
   body,
   attachments: attachments ?? [],
-  is_public,
+  is_public: type === "trouble",
   created_at: ago(daysAgo, 10 + (daysAgo % 8), (daysAgo * 7) % 60),
 }));
 
@@ -421,13 +399,13 @@ const handwrittenEntries: Entry[] = entrySeeds.map(([id, theme_id, author_id, ty
  */
 function generateHistory(): Entry[] {
   const notes: [EntryType, string][] = [
-    ["progress", "分散液を調製。1% SC、超音波 1h。"],
-    ["progress", "ゲルカラムで分離。溶出液の吸収スペクトルを測定。"],
-    ["progress", "PL マップを測定。励起 500–800 nm。"],
+    ["memo", "分散液を調製。1% SC、超音波 1h。"],
+    ["memo", "ゲルカラムで分離。溶出液の吸収スペクトルを測定。"],
+    ["memo", "PL マップを測定。励起 500–800 nm。"],
     ["memo", "遠心機のローターは R-1 を予約すること。"],
-    ["progress", "AFM でネットワーク密度を確認。"],
+    ["memo", "AFM でネットワーク密度を確認。"],
     ["memo", "SDS の新しいロットに切り替え。"],
-    ["progress", "デバイスの I-V 特性を測定。"],
+    ["memo", "デバイスの I-V 特性を測定。"],
   ];
   let seed = 42;
   const rand = () => {

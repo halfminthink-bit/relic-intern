@@ -41,7 +41,7 @@ export function EntryTypeFilter({
 }
 
 export function countByType(entries: { type: EntryType }[]): Record<EntryType | "all", number> {
-  const c = { all: entries.length, progress: 0, trouble: 0, achievement: 0, memo: 0 };
+  const c = { all: entries.length, trouble: 0, memo: 0 };
   entries.forEach((e) => c[e.type]++);
   return c;
 }

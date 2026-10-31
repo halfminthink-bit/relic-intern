@@ -21,13 +21,14 @@ import type {
   ThemeVisibility,
   ThemeWithLab,
 } from "@/types/db";
+import type { CompressedImage } from "@/lib/image";
 import { mockConsultRequests, mockEntries, mockLabs, mockMembers, mockThemes } from "@/data/mock";
 
 /* ------------------------------------------------------------------ */
 /* モックストア                                                         */
 /* ------------------------------------------------------------------ */
 
-const STORAGE_KEY = "labtrail:mock-db:v2";
+const STORAGE_KEY = "labtrail:mock-db:v3";
 
 interface MockDb {
   labs: Lab[];
@@ -342,11 +343,11 @@ export async function listConsultRequestsForOwner(memberId: string): Promise<Con
 /* ------------------------------------------------------------------ */
 
 /**
- * 圧縮済みの画像をアップロードして Attachment を返す。
+ * 圧縮済みの画像（本画像とサムネイル）をアップロードして Attachment を返す。
  * モックでは data URL のまま保持する。
  * Supabase 版: supabase.storage.from("attachments").upload(path, blob) → getPublicUrl(path)
  */
-export async function uploadImage(image: { blob: Blob; thumbnail: Blob; name: string }): Promise<Attachment> {
+export async function uploadImage(image: CompressedImage): Promise<Attachment> {
   await delay(200);
   const [url, thumbnail_url] = await Promise.all([blobToDataUrl(image.blob), blobToDataUrl(image.thumbnail)]);
   return { kind: "image", url, thumbnail_url, name: image.name, size: image.blob.size };
@@ -361,11 +362,3 @@ function blobToDataUrl(blob: Blob): Promise<string> {
   });
 }
 
-/** 小さなファイル（PDF・CSV など）。大きな生データは外部リンクで添付してもらう */
-export const MAX_FILE_BYTES = 5 * 1024 * 1024;
-
-export async function uploadFile(file: File): Promise<Attachment> {
-  await delay(200);
-  // モックでは中身を保存せず、名前とサイズだけ持つ（localStorage の容量対策）
-  return { kind: "file", url: "#", name: file.name, size: file.size };
-}
