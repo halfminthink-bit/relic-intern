@@ -1,30 +1,23 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
-import { Building2, FolderGit2, History, Lock, MessageSquareText, UserRound } from "lucide-react";
-import type { Entry, EntryType } from "@/types/db";
+import { Building2, FolderGit2, MessageCircleQuestion, MessageSquareText, UserRound } from "lucide-react";
+import type { Entry } from "@/types/db";
 import { getPublicTheme } from "@/lib/api";
 import { useAsync } from "@/hooks/use-async";
 import { Button } from "@/components/ui/button";
 import { Readme } from "@/components/readme";
 import { TagList } from "@/components/tags";
-import { ThemeVisibilityBadge } from "@/components/visibility";
 import { EntryTimeline } from "@/components/entry-timeline";
-import { EntryTypeFilter, countByType } from "@/components/entry-type-filter";
 import { ConsultDialog } from "@/components/consult-dialog";
 import { EmptyState, LoadingState } from "@/components/states";
-import { ENTRY_TYPE_META, ENTRY_TYPES } from "@/lib/constants";
-import { ENTRY_TYPE_STYLE } from "@/components/entry-type";
 import NotFoundPage from "@/pages/not-found";
 
 export default function ThemePage() {
   const { slug = "", themeId = "" } = useParams();
   const { hash } = useLocation();
   const { data, loading } = useAsync(() => getPublicTheme(slug, themeId), [slug, themeId]);
-  const [filter, setFilter] = useState<EntryType | "all">("all");
   const [consult, setConsult] = useState<{ open: boolean; entry: Entry | null }>({ open: false, entry: null });
 
-  const entries = useMemo(() => (data?.entries ?? []).filter((e) => filter === "all" || e.type === filter), [data, filter]);
-  const counts = useMemo(() => countByType(data?.entries ?? []), [data]);
 
   // 「相談を待っている困りごと」から来たとき、該当の記録までスクロール
   useEffect(() => {
@@ -54,7 +47,6 @@ export default function ThemePage() {
             </Link>
             <span className="text-muted-foreground">/</span>
             <h1 className="font-bold">{theme.title}</h1>
-            <ThemeVisibilityBadge visibility={theme.visibility} className="ml-1" />
           </div>
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
             <TagList tags={theme.tags} asLink />
@@ -72,39 +64,28 @@ export default function ThemePage() {
 
           <section>
             <h2 className="mb-3 flex items-center gap-2 text-base font-semibold">
-              <History className="h-4 w-4 text-muted-foreground" />
-              記録
+              <MessageCircleQuestion className="h-4 w-4 text-trouble" />
+              相談中の記録
             </h2>
-            {theme.visibility !== "public" ? (
-              <EmptyState icon={<Lock />} title="記録は公開されていません">
-                このテーマは「概要のみ公開」です。詳しく知りたい場合は担当者に相談してみてください。
+            {data.entries.length === 0 ? (
+              <EmptyState icon={<MessageCircleQuestion />} title="いま相談中の記録はありません">
+                記録は研究室内のメモとして残されています。テーマについて聞いてみたいことがあれば、担当者に相談できます。
               </EmptyState>
-            ) : data.entries.length === 0 ? (
-              <EmptyState title="公開されている記録はまだありません" />
             ) : (
-              <>
-                <EntryTypeFilter value={filter} onChange={setFilter} counts={counts} />
-                <div className="mt-4">
-                  {entries.length === 0 ? (
-                    <EmptyState title={`「${filter === "all" ? "" : ENTRY_TYPE_META[filter].label}」の記録はありません`} />
-                  ) : (
-                    <EntryTimeline
-                      entries={entries}
-                      renderActions={(e) => (
-                        <Button
-                          variant={e.type === "trouble" ? "outline" : "ghost"}
-                          size="sm"
-                          onClick={() => openConsult(e)}
-                          className={e.type === "trouble" ? "border-trouble/40 text-trouble hover:bg-trouble-soft hover:text-trouble" : "text-muted-foreground"}
-                        >
-                          <MessageSquareText />
-                          {e.type === "trouble" ? "アドバイスする" : "この記録について相談"}
-                        </Button>
-                      )}
-                    />
-                  )}
-                </div>
-              </>
+              <EntryTimeline
+                entries={data.entries}
+                renderActions={(e) => (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openConsult(e)}
+                    className="border-trouble/40 text-trouble hover:bg-trouble-soft hover:text-trouble"
+                  >
+                    <MessageSquareText />
+                    アドバイスする
+                  </Button>
+                )}
+              />
             )}
           </section>
         </div>
@@ -127,20 +108,11 @@ export default function ThemePage() {
                 担当 {theme.owner.grade}
               </div>
             </dl>
-            {theme.visibility === "public" && (
-              <ul className="mt-4 grid grid-cols-2 gap-2 border-t pt-4">
-                {ENTRY_TYPES.map((t) => {
-                  const Icon = ENTRY_TYPE_STYLE[t].icon;
-                  return (
-                    <li key={t} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <Icon className={`h-3.5 w-3.5 ${ENTRY_TYPE_STYLE[t].text}`} />
-                      {ENTRY_TYPE_META[t].label}
-                      <span className="ml-auto font-mono tabular-nums text-foreground">{counts[t]}</span>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
+            <p className="mt-4 flex items-center gap-1.5 border-t pt-4 text-xs text-muted-foreground">
+              <MessageCircleQuestion className="h-3.5 w-3.5 text-trouble" />
+              相談中の記録
+              <span className="ml-auto font-mono tabular-nums text-foreground">{data.entries.length}</span>
+            </p>
           </div>
 
           <div className="rounded-lg border border-dashed bg-accent/40 p-4 text-sm">

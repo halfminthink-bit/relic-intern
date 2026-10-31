@@ -18,7 +18,6 @@ import type {
   NewConsultRequest,
   NewEntry,
   Theme,
-  ThemeVisibility,
   ThemeWithLab,
 } from "@/types/db";
 import type { CompressedImage } from "@/lib/image";
@@ -82,6 +81,8 @@ export async function resetMockData() {
 
 /* ------------------------------------------------------------------ */
 /* 公開範囲のルール（Supabase では RLS ポリシーで同じことを表現する）     */
+/*   研究室・テーマ … 存在（名前・概要・タグ・担当の学年）は常に公開          */
+/*   記録          … 既定は非公開。「相談に出す」を押したものだけ公開         */
 /* ------------------------------------------------------------------ */
 
 function isLabVisible(lab: Lab) {
@@ -91,7 +92,7 @@ function isThemeVisible(theme: Theme, lab: Lab) {
   return isLabVisible(lab) && theme.visibility !== "private";
 }
 function isEntryVisible(entry: Entry, theme: Theme, lab: Lab) {
-  return isThemeVisible(theme, lab) && theme.visibility === "public" && entry.is_public;
+  return isThemeVisible(theme, lab) && entry.is_public;
 }
 
 const byNewest = (a: { created_at: string }, b: { created_at: string }) => b.created_at.localeCompare(a.created_at);
@@ -268,12 +269,16 @@ export async function getThemeForMember(themeId: string): Promise<ThemeWithLab |
   return t ? withLab(t) : null;
 }
 
-export async function listThemeEntries(themeId: string): Promise<(Entry & { author: Member })[]> {
+export async function listThemeEntries(themeId: string): Promise<(Entry & { author: Member; consultCount: number })[]> {
   await delay();
   return db.entries
     .filter((e) => e.theme_id === themeId)
     .sort(byNewest)
-    .map((e) => ({ ...e, author: memberOf(e.author_id) }));
+    .map((e) => ({
+      ...e,
+      author: memberOf(e.author_id),
+      consultCount: db.consult_requests.filter((c) => c.entry_id === e.id).length,
+    }));
 }
 
 /** 草グラフ用: 投稿日時だけを返す（Supabase 版: .from("entries").select("created_at").eq("author_id", id).gte("created_at", since)） */
@@ -297,30 +302,24 @@ export async function createEntry(input: NewEntry): Promise<Entry> {
   return row;
 }
 
-export async function updateEntryVisibility(entryId: string, isPublic: boolean): Promise<void> {
-  await delay(80);
+/**
+ * 「相談に出す」（open = true）: 困りごととして公開し、外部から相談を受け付ける。
+ * 「相談を取り下げる」（open = false）: 非公開のメモに戻す。届いた相談は残る。
+ * Supabase 版: supabase.from("entries").update({ type, is_public }).eq("id", entryId)
+ */
+export async function setEntryConsultation(entryId: string, open: boolean): Promise<void> {
+  await delay(150);
   const e = db.entries.find((x) => x.id === entryId);
-  if (e) e.is_public = isPublic;
+  if (e) {
+    e.type = open ? "trouble" : "memo";
+    e.is_public = open;
+  }
   persist();
 }
 
 export async function deleteEntry(entryId: string): Promise<void> {
   await delay(80);
   db.entries = db.entries.filter((x) => x.id !== entryId);
-  persist();
-}
-
-export async function updateThemeVisibility(themeId: string, visibility: ThemeVisibility): Promise<void> {
-  await delay(80);
-  const t = db.themes.find((x) => x.id === themeId);
-  if (t) t.visibility = visibility;
-  persist();
-}
-
-export async function updateLabVisibility(labId: string, isPublic: boolean): Promise<void> {
-  await delay(80);
-  const l = db.labs.find((x) => x.id === labId);
-  if (l) l.is_public = isPublic;
   persist();
 }
 

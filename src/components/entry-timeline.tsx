@@ -10,15 +10,15 @@ import { cn } from "@/lib/utils";
 export type TimelineEntry = Entry & { author: Member };
 
 /** 日付ごとに区切った、GitHub のコミット履歴風のタイムライン */
-export function EntryTimeline({
+export function EntryTimeline<T extends TimelineEntry>({
   entries,
   renderActions,
   renderMeta,
   pageSize = 20,
 }: {
-  entries: TimelineEntry[];
-  renderActions?: (e: TimelineEntry) => ReactNode;
-  renderMeta?: (e: TimelineEntry) => ReactNode;
+  entries: T[];
+  renderActions?: (e: T) => ReactNode;
+  renderMeta?: (e: T) => ReactNode;
   /** 一度に表示する件数（「さらに表示」で追加） */
   pageSize?: number;
 }) {
@@ -66,9 +66,9 @@ export function EntryCard({
   className?: string;
 }) {
   return (
-    <article id={`entry-${entry.id}`} className={cn("rounded-lg border bg-card p-4 scroll-mt-24", className)}>
+    <article id={`entry-${entry.id}`} className={cn("rounded-lg border bg-card p-4 scroll-mt-24 transition-shadow", entry.type === "trouble" && "border-l-4 border-l-trouble/60", className)}>
       <header className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-        <EntryTypeBadge type={entry.type} />
+        {entry.type === "trouble" && <EntryTypeBadge type={entry.type} />}
         <span className="font-medium text-foreground/80">{entry.author.grade}</span>
         <time dateTime={entry.created_at} title={formatDateTime(entry.created_at)}>
           {timeAgo(entry.created_at)}
@@ -82,9 +82,9 @@ export function EntryCard({
   );
 }
 
-function groupByMonth(entries: TimelineEntry[]): [string, TimelineEntry[]][] {
+function groupByMonth<T extends TimelineEntry>(entries: T[]): [string, T[]][] {
   const fmt = new Intl.DateTimeFormat("ja-JP", { year: "numeric", month: "long" });
-  const map = new Map<string, TimelineEntry[]>();
+  const map = new Map<string, T[]>();
   for (const e of entries) {
     const key = fmt.format(new Date(e.created_at));
     map.set(key, [...(map.get(key) ?? []), e]);

@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TagList } from "@/components/tags";
-import { ThemeVisibilityBadge } from "@/components/visibility";
 import { EmptyState, LoadingState } from "@/components/states";
 import { cn } from "@/lib/utils";
 
@@ -177,14 +176,13 @@ export default function ExplorePage() {
                         <Link to={`/labs/${t.lab.slug}/themes/${t.id}`} className="font-semibold text-primary hover:underline">
                           {t.title}
                         </Link>
-                        <ThemeVisibilityBadge visibility={t.visibility} className="ml-auto" />
                       </div>
                       <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">{plainSummary(t.summary)}</p>
                       <TagList tags={t.tags} className="mt-3" />
                       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                         <span>{t.lab.university}</span>
                         <span>担当 {t.owner.grade}</span>
-                        {t.visibility === "public" && <span>公開記録 {t.publicEntryCount}件</span>}
+                        {t.publicEntryCount > 0 && <span className="text-trouble">相談中 {t.publicEntryCount}件</span>}
                         {t.lastActivity && <span>最終更新 {timeAgo(t.lastActivity)}</span>}
                       </div>
                     </li>
